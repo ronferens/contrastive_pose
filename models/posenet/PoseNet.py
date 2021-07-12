@@ -34,6 +34,8 @@ class PoseNet(nn.Module):
             if isinstance(m, nn.Linear):
                 torch.nn.init.kaiming_normal_(m.weight)
 
+        self.latent = None
+
     def forward(self, data):
         """
         Forward pass
@@ -44,10 +46,16 @@ class PoseNet(nn.Module):
             x = self.backbone.extract_features(data.get('img'))
         else:
             x = self.backbone(data.get('img'))
+
         x = self.avg_pooling_2d(x)
         x = x.flatten(start_dim=1)
+
+        # Saving the latent tensor (for training using the Contrastive-Loss)
+        self.latent = torch.clone(x)
+
         x = self.dropout(F.relu(self.fc1(x)))
         p_x = self.fc2(x)
         p_q = self.fc3(x)
-        return {'pose': torch.cat((p_x, p_q), dim=1)}
+
+        return {'pose': torch.cat((p_x, p_q), dim=1), 'latent': self.latent}
 
